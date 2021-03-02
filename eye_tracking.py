@@ -5,7 +5,7 @@ import cv2
 face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 eye_cascade= cv2.CascadeClassifier('haarcascade_eye.xml')
 #------------------------------------------------------------
-# initilaisation du deteteur en utilisant blob
+# initilaisation du deteteur de blob
 detector_params = cv2.SimpleBlobDetector_Params()
 detector_params.filterByArea = True
 detector_params.maxArea = 1500
@@ -16,29 +16,38 @@ img = cv2.imread("test.jpeg")
 gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 face = face_cascade.detectMultiScale(gray, 1.3, 5)
 # On cré une fonction pour la detection des yeux 
-def detect_eyes( img, classifier):
-    gray_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    coord = eye_cascade.detectMultiScale(gray_frame, 1.3, 5)
-    height = np.size(img, 0)
-    width = np.size(img, 1)
-    left_eye = None
-    right_eye = None
-    for (x, y, w, h)in coord:
-        if y+h > height/2:
-            pass
+def detect_eyes( img,img_gray, lest, rest, classifier):
+    leftEye= None
+    rightEye = None
+    leftEyeG = None
+    rightEyeG = None
+    coord = eye_cascade.detectMultiScale(img_gray, 1.3, 5)
+    if coord is None or len(coord) == 0:
+        pass
 
-        eye_center = x+ w /2
-        if eye_center  < width * 0.5:
-            left_eye = img[y:y+h, x:x+w]
-        else:
-            right_eye = img[y:y+h, x:x+w]
+    else:
+        for (x, y, w, h) in coord:
+            eyecenter = int(float(x) + (float(w)/ float(2)))
+            if lest[0] < eyecenter and eyecenter < lest[1]:
+                leftEye = img[y:y + h, x:x +w]
+                leftEyeG = img_gray[y:y +h, x:x + w]
+                leftEye, leftEyeG  = cut_eyebrows(leftEye, leftEyeG)
+            elif rest[0] < eyecenter and eyecenter < rest[1]:
+                rightEye = img[y:y + h, x:x +w]
+                rightEyeG = img_gray[y:y +h, x:x +w]
+                rightEye, rightEyeG = cut_eyebrows(rightEye, rightEyeG)
+            else:
+                pass
 
-    return left_eye, right_eye
+    return leftEye, rightEye, leftEyeG, rightEyeG
 
+
+
+    
 # fonction de detection de face 
-def face_detection(img, classifier):
-    gray_frame= cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    coords =face_cascade.detectMultiScale(gray_frame, 1.3, 5)
+def face_detection(img, img_gray, classifier):
+    
+    coords =face_cascade.detectMultiScale(img, 1.3, 5)
     if len(coords )> 1:
         big = (0, 0, 0, 0)
         for i in coords:
@@ -48,32 +57,49 @@ def face_detection(img, classifier):
     elif len(coords) == 1:
         big = coords
     else:
-        return None
+        return None, None, None ,None
     for (x, y, w, h) in big:
         frame = img[y:y +h, x:x+w]
-    return frame
+        frame_gray = img_gray[y:y + h, x:x+w]
+        lest = (int(w * 0.1), int(w * 0.45))
+        rest = (int(w * 0.55), int(w * 0.9))
+        X, Y = x, y 
+
+    return frame, frame_gray, lest, rest, X, Y
 #---------------------------------------------------
 # fonction pour couper la partie de l'oeil depuis l'image
-def cut_eyebrows(img):
+def cut_eyebrows(img, imgG):
     height, width = img.shape[:2]
-    eyebrow_h = int(height / 4)
-    img = img[eyebrow_h:height, 0:width]
+    img = img[15:height, 0:width]
+    imgG= imgG[15:height, 0:width]
 
-    return img
+    return img, imgG
 #----------------------------------------------------------
-def blob_process(img, detector):
-    gray_frame = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    _, img = cv2.threshold(gray_frame, 42, 255, cv2.THRESH_BINARY)
+def blob_process(img, threshold, detector, prevArea=None):
+    
+    _, img = cv2.threshold(img, threshold, 255, cv2.THRESH_BINARY)
     img = cv2.erode(img, None, iterations = 2)
     img = cv2.dilate(img, None, iterations= 4)
     img = cv2.medianBlur(img, 5)
     keypoints = detector.detect(img)
+    if keypoints and prevArea and len(keypoints) > 1 :
+        tmp = 1000
+        for keypoint in keypoints: 
+            if abs(keypoint.size - prevArea)< tmp:
+                ans = keypoint
+                tmp = abs(keypoint.size - prevArea)
+        keypoints = np.array(ans)
     return keypoints
 
 #------------------------------------------------------
 def nothing():
+
     pass
 
+
+def draw_blobs():
+    #afficher le blob
+    cv2.drawKeypoints(img, keypoints, imgG, (0,0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
 #implementation de la fonction main
 
