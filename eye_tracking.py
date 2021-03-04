@@ -106,26 +106,7 @@ def draw_blobs():
 vc = cv2.VideoCapture(0)
 cv2.namedWindow('image')
 #cv2.createTrackbar('threshold', 'image', 0, 255, nothing)
-while True:
-    _, frame = vc.read()
-    face_frame = face_detection(frame, face_cascade)
-    if face_frame is not None:
-        eyes = detect_eyes(face_frame, eye_cascade)
-        for eye in eyes:
-            if eye is not None:
-                #threshold = cv2.getTrackbarPos('threshold','image')
-                eye = cut_eyebrows(eye)
-                keypoints= blob_process(eye, detector)
-                eye = cv2.drawKeypoints(eye, keypoints, eye, (0, 0, 255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    else:
-        print(" No face")    
-    cv2.imshow('Image', frame)
-    key = cv2.waitKey(1) & 0xFF 
-    if key == ord("q"):
-        break
 
-vc.release()
-cv2.destroyAllWindows()
 """
 #draw face in images 
 for (x, y, w, h) in face:
